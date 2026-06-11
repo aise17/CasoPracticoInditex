@@ -1,0 +1,35 @@
+---
+description: Step-by-step recipe for adding a new ranking criterion
+alwaysApply: false
+---
+
+# Adding a New Ranking Criterion
+
+Criteria follow the Strategy pattern: the ranking algorithm (`ProductRankingService`) never changes when a criterion is added. Follow these steps in order:
+
+1. **Domain enum**: add the constant to `CriterionName` (e.g. `NEW_CRITERION`).
+2. **Domain strategy**: create a `final` class in `domain.ranking` implementing `RankingCriterion`:
+
+```java
+public final class NewCriterion implements RankingCriterion {
+
+    @Override
+    public CriterionName name() {
+        return CriterionName.NEW_CRITERION;
+    }
+
+    @Override
+    public Score calculateScore(Product product) {
+        // pure function of the Product, returns a Score
+    }
+}
+```
+
+3. **Register the bean**: add it to the criteria list in `ProductRankingConfiguration#productRankingService`.
+4. **API contract**: add a typed `BigDecimal` field to `RankingWeightsRequest` (camelCase, e.g. `newCriterion`) and wire it in `ProductRankingRestMapper#toCommand` via `addWeightIfPresent(...)`. Do not switch to a generic map; typed fields are a deliberate decision (see README).
+5. **Tests**:
+   - Unit test for the criterion (`NewCriterionTest`, mirrors `StockRatioCriterionTest`).
+   - Update REST slice and E2E tests if the new weight changes example payloads.
+6. **Docs**: update `README.md` (API example, design decisions if relevant) and the Postman collection in `docs/postman/`.
+
+Missing weight for a known criterion defaults to zero (`RankingWeights.weightFor`), so the new criterion is backward compatible by design.

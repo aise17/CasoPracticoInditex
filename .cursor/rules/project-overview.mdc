@@ -1,0 +1,27 @@
+---
+description: Project context, stack and essential commands
+alwaysApply: true
+---
+
+# Product Ranking Service
+
+REST service that ranks products by a weighted sum of criteria (sales units, stock ratio). Java 17, Spring Boot 3, MongoDB, Maven.
+
+## Key references
+
+- Design decisions and rationale: `README.md` and `docs/specs/001-007` (source of truth: domain model, hexagonal architecture, ranking algorithm, REST API, persistence, testing strategy).
+- Architecture rules are enforced by ArchUnit in `src/test/java/.../architecture/HexagonalArchitectureTest.java`.
+
+## Commands
+
+```bash
+docker compose up -d        # MongoDB (required for the app and integration/E2E tests)
+./mvnw spring-boot:run      # run app (seeds dataset on first start)
+./mvnw test                 # full test suite (needs Docker for Testcontainers)
+```
+
+## Hard constraints
+
+- No Lombok, no Bean Validation annotations, no MapStruct. Plain Java, explicit code.
+- Single endpoint: `POST /api/products/ranking`. Errors are `400 {"message": "..."}`.
+- When changing behavior or design, keep `README.md` consistent with the code.

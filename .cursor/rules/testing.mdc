@@ -1,0 +1,37 @@
+---
+description: Testing conventions, naming, test mothers and test levels
+globs: src/test/java/**/*.java
+alwaysApply: false
+---
+
+# Testing Conventions
+
+## Pick the right level
+
+| What you are testing | Level | Tooling |
+| --- | --- | --- |
+| Domain / application logic | Plain unit test | JUnit 5 + AssertJ, `InMemoryProductRepository` |
+| Controller, DTOs, error contract | REST slice | `@WebMvcTest` + MockMvc + `@MockitoBean` |
+| Mongo mapping and repository | Integration | `@DataMongoTest` + Testcontainers |
+| Full HTTP flow | E2E (`e2e` package) | `@SpringBootTest` + Rest Assured + Testcontainers |
+| Layer dependencies | Architecture | ArchUnit in `architecture` package |
+
+## Style
+
+- Test names state behavior: `shouldRejectNegativeCriterionWeight`, `shouldRankProductsByWeightedScore`. No `test` prefix.
+- AssertJ only (`assertThat`, `assertThatThrownBy`); never JUnit assertions or Hamcrest.
+- One logical assertion block per test; separate arrange/act/assert with blank lines.
+- Assert exact exception messages, since they are part of the API contract:
+
+```java
+assertThatThrownBy(() -> new CriterionWeight(-1))
+    .isInstanceOf(IllegalArgumentException.class)
+    .hasMessage("Criterion weight cannot be negative");
+```
+
+## Test data
+
+- Build fixtures with test mothers (`ProductTestMother`, `RankingWeightsTestMother`): `final` class, private constructor, static factory methods named for intent (`productWithSalesUnits(100)`). Extend the mother instead of inlining constructors in tests.
+- Tests NEVER rely on the Mongo seed data; each integration/E2E test inserts its own documents and cleans up.
+
+Run with `./mvnw test` (Docker required for Testcontainers).

@@ -1,0 +1,38 @@
+---
+description: Hexagonal architecture layering and dependency rules
+globs: src/main/java/**/*.java
+alwaysApply: false
+---
+
+# Hexagonal Architecture (Ports & Adapters)
+
+Dependency rule: `infrastructure -> application -> domain`. Never the other way. ArchUnit (`HexagonalArchitectureTest`) fails the build on violations.
+
+## Where things go
+
+| Code | Package |
+| --- | --- |
+| Aggregates, value objects | `domain.model` |
+| Ranking criteria, domain services | `domain.ranking` |
+| Primary ports (use case interfaces) | `application.port.in` |
+| Secondary ports (repository interfaces) | `application.port.out` |
+| Use case implementations + commands | `application.usecase` |
+| Controllers, request/response DTOs, REST mapper, error handling | `infrastructure.rest` |
+| Mongo documents, Spring Data repos, persistence mapper | `infrastructure.persistence.mongo` |
+| Bean wiring, seed | `infrastructure.configuration` |
+
+## Rules
+
+- `domain` and `application` classes have ZERO Spring/Mongo imports and no annotations. They are plain Java wired as beans in `ProductRankingConfiguration`:
+
+```java
+@Bean
+public RankProductsUseCase rankProductsUseCase(ProductRepository repo, ProductRankingService service) {
+    return new RankProductsService(repo, service);
+}
+```
+
+- Controllers depend on the port (`RankProductsUseCase`), never on the implementation.
+- Domain objects never leak raw infrastructure types; mappers (`ProductRankingRestMapper`, `ProductMongoMapper`) translate at each boundary.
+- New use case = port interface in `port.in` + `final` service implementing it + immutable `*Command` + bean in configuration.
+- If you add an architectural constraint, also add the corresponding ArchUnit test.

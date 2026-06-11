@@ -1,0 +1,39 @@
+---
+description: Value object and domain model conventions (tactical DDD)
+globs: src/main/java/**/domain/**/*.java
+alwaysApply: false
+---
+
+# Domain Model Conventions
+
+The domain is pure Java: no Spring, no Mongo, no annotations, no records, no Lombok.
+
+## Value object pattern
+
+Every value object follows this exact shape (see `CriterionWeight`, `Score`, `ProductId`):
+
+```java
+public final class CriterionWeight {
+
+    private final double value;
+
+    public CriterionWeight(double value) {
+        if (value < 0) {
+            throw new IllegalArgumentException("Criterion weight cannot be negative");
+        }
+        this.value = value;
+    }
+
+    public double value() { ... }          // accessor named value(), no get prefix
+
+    @Override public boolean equals(Object other) { ... }  // value-based
+    @Override public int hashCode() { ... }
+    @Override public String toString() { ... }
+}
+```
+
+- `final` class, all fields `private final`, no setters. Defensive-copy collections and expose them unmodifiable.
+- Invariants validated in the constructor with `IllegalArgumentException` and a human-readable message. These messages reach API clients as the 400 body, so word them carefully and assert them in tests.
+- Behavior lives next to the data (`Stock.availabilityRatio()`, `Score.add()`), not in services. Use domain services (e.g. `ProductRankingService`) only for logic spanning multiple aggregates.
+- `Product` is the aggregate root: equality by `ProductId` only. Value objects: equality by all values.
+- Scores use `double` (relative ordering, not money). `Score` rejects `NaN`/`Infinity`; rounding happens only in the REST mapper.
