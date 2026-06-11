@@ -12,6 +12,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -44,9 +45,9 @@ class MongoProductRepositoryIntegrationTest {
 
     @Test
     void shouldFindAllProductsFromMongoAndMapThemToDomain() {
-        springDataRepository.save(
+        springDataRepository.save(Objects.requireNonNull(
             ProductDocumentTestMother.product("1", "V-NECH BASIC SHIRT", 100, 4, 9, 0)
-        );
+        ));
 
         List<Product> products = productRepository.findAll();
 
@@ -70,9 +71,9 @@ class MongoProductRepositoryIntegrationTest {
 
     @Test
     void shouldFailWhenPersistedProductContainsInvalidDomainData() {
-        springDataRepository.save(
+        springDataRepository.save(Objects.requireNonNull(
             ProductDocumentTestMother.product("1", "V-NECH BASIC SHIRT", -10, 4, 9, 0)
-        );
+        ));
 
         assertThatThrownBy(() -> productRepository.findAll())
             .isInstanceOf(IllegalArgumentException.class)

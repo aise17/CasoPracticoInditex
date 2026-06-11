@@ -14,6 +14,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
+import java.util.Objects;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -41,7 +42,7 @@ class ProductRankingControllerTest {
         ));
 
         mockMvc.perform(post("/api/products/ranking")
-                .contentType(MediaType.APPLICATION_JSON)
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                 .content("""
                     {"weights":{"salesUnits":0.7,"stockRatio":0.3}}
                     """))
@@ -53,7 +54,7 @@ class ProductRankingControllerTest {
     @Test
     void shouldReturnBadRequestWhenWeightsAreMissing() throws Exception {
         mockMvc.perform(post("/api/products/ranking")
-                .contentType(MediaType.APPLICATION_JSON)
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                 .content("{}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("Ranking weights cannot be empty"));
@@ -62,7 +63,7 @@ class ProductRankingControllerTest {
     @Test
     void shouldReturnBadRequestWhenJsonIsMalformed() throws Exception {
         mockMvc.perform(post("/api/products/ranking")
-                .contentType(MediaType.APPLICATION_JSON)
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                 .content("{\"weights\":{\"salesUnits\":}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("Malformed JSON request"));
