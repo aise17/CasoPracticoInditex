@@ -1,0 +1,504 @@
+{
+	"info": {
+		"name": "Product Ranking Service",
+		"description": "Collection for the Product Ranking REST API.\n\nStart the stack before running:\n1. docker compose up -d\n2. ./mvnw spring-boot:run\n\nEvery request targets POST {{baseUrl}}/api/products/ranking. Valid requests return the products ordered by weighted score; invalid ones return 400 with a message.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080"
+		}
+	],
+	"item": [
+		{
+			"name": "Valid requests",
+			"item": [
+				{
+					"name": "Ranking with both criteria (0.7 sales / 0.3 stock)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Order is 5, 1, 3, 2, 6, 4', () => {",
+									"    const ids = pm.response.json().products.map(p => p.id);",
+									"    pm.expect(ids).to.eql(['5', '1', '3', '2', '6', '4']);",
+									"});",
+									"pm.test('Top score is 465.0', () => {",
+									"    pm.expect(pm.response.json().products[0].score).to.eql(465.0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {\n    \"salesUnits\": 0.7,\n    \"stockRatio\": 0.3\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "Main use case: weighted sum of both criteria. Expected order: 5, 1, 3, 2, 6, 4 with scores 465.0, 90.0, 86.0, 65.0, 44.0, 32.1."
+					}
+				},
+				{
+					"name": "Ranking only by sales units (1 / 0)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Order follows sales units descending', () => {",
+									"    const ids = pm.response.json().products.map(p => p.id);",
+									"    pm.expect(ids).to.eql(['5', '1', '3', '2', '6', '4']);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {\n    \"salesUnits\": 1,\n    \"stockRatio\": 0\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "Stock ratio weight set to zero: the ranking depends only on units sold (650, 100, 80, 50, 20, 3)."
+					}
+				},
+				{
+					"name": "Ranking only by stock ratio (0 / 1) - shows tie-breaker",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Tied products (2,3,4,6 at score 100) are ordered by id', () => {",
+									"    const ids = pm.response.json().products.map(p => p.id);",
+									"    pm.expect(ids).to.eql(['2', '3', '4', '6', '1', '5']);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {\n    \"salesUnits\": 0,\n    \"stockRatio\": 1\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "Products 2, 3, 4 and 6 have full stock (score 100) and tie. The deterministic tie-breaker orders them by ascending product id: 2, 3, 4, 6, then 1 (66.67) and 5 (33.33)."
+					}
+				},
+				{
+					"name": "Missing weight defaults to zero (only salesUnits sent)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Behaves like stockRatio = 0', () => {",
+									"    const ids = pm.response.json().products.map(p => p.id);",
+									"    pm.expect(ids).to.eql(['5', '1', '3', '2', '6', '4']);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {\n    \"salesUnits\": 1\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "stockRatio is not sent, so its weight defaults to zero. Same result as sending {salesUnits: 1, stockRatio: 0}."
+					}
+				},
+				{
+					"name": "All weights set to zero - order by tie-breaker",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('All scores are 0 and order is by ascending id', () => {",
+									"    const products = pm.response.json().products;",
+									"    pm.expect(products.map(p => p.id)).to.eql(['1', '2', '3', '4', '5', '6']);",
+									"    products.forEach(p => pm.expect(p.score).to.eql(0));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {\n    \"salesUnits\": 0,\n    \"stockRatio\": 0\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "Valid edge case: explicit zero weights. Every product scores 0 and the deterministic tie-breaker returns the catalog ordered by id."
+					}
+				},
+				{
+					"name": "Unknown criterion is ignored (salesUnits + margin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('margin is ignored, ranking by sales only', () => {",
+									"    const ids = pm.response.json().products.map(p => p.id);",
+									"    pm.expect(ids).to.eql(['5', '1', '3', '2', '6', '4']);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {\n    \"salesUnits\": 1,\n    \"margin\": 5\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "Forward compatibility: 'margin' is not a known criterion, so it is silently ignored and the ranking uses only salesUnits."
+					}
+				},
+				{
+					"name": "Fractional weights (do not need to sum 1)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Same order as 0.7/0.3 (weights are relative)', () => {",
+									"    const ids = pm.response.json().products.map(p => p.id);",
+									"    pm.expect(ids).to.eql(['5', '1', '3', '2', '6', '4']);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {\n    \"salesUnits\": 7,\n    \"stockRatio\": 3\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "Weights are relative importances, not a probability distribution: {7, 3} produces the same order as {0.7, 0.3} with scores scaled x10."
+					}
+				}
+			]
+		},
+		{
+			"name": "Error cases (400)",
+			"item": [
+				{
+					"name": "Missing weights field",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('Message: Ranking weights cannot be empty', () => {",
+									"    pm.expect(pm.response.json().message).to.eql('Ranking weights cannot be empty');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "The body has no 'weights' object: the request cannot express any ranking."
+					}
+				},
+				{
+					"name": "Empty weights object",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('Message: Ranking weights cannot be empty', () => {",
+									"    pm.expect(pm.response.json().message).to.eql('Ranking weights cannot be empty');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "'weights' is present but contains no criterion: a ranking without criteria has no meaning."
+					}
+				},
+				{
+					"name": "Only unknown criteria",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('Message: Ranking weights cannot be empty', () => {",
+									"    pm.expect(pm.response.json().message).to.eql('Ranking weights cannot be empty');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {\n    \"margin\": 0.5,\n    \"novelty\": 0.5\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "Unknown criteria are ignored, so the effective weight map ends up empty and the request is rejected."
+					}
+				},
+				{
+					"name": "Negative weight",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('Message: Criterion weight cannot be negative', () => {",
+									"    pm.expect(pm.response.json().message).to.eql('Criterion weight cannot be negative');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {\n    \"salesUnits\": -1,\n    \"stockRatio\": 0.3\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "Domain invariant: CriterionWeight rejects negative values. The error message comes straight from the value object."
+					}
+				},
+				{
+					"name": "Non-numeric weight",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('Message: Malformed JSON request', () => {",
+									"    pm.expect(pm.response.json().message).to.eql('Malformed JSON request');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"weights\": {\n    \"salesUnits\": \"abc\",\n    \"stockRatio\": 0.3\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "Jackson cannot deserialize 'abc' into a number, which raises HttpMessageNotReadableException before reaching the mapper."
+					}
+				},
+				{
+					"name": "Malformed JSON",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('Message: Malformed JSON request', () => {",
+									"    pm.expect(pm.response.json().message).to.eql('Malformed JSON request');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"weights\":{\"salesUnits\":}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/products/ranking",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "products", "ranking"]
+						},
+						"description": "Syntactically invalid JSON: truncated body with a missing value."
+					}
+				}
+			]
+		}
+	]
+}
